@@ -3,12 +3,16 @@ IMG := bin/steins.img
 
 GCCFLAGS := -fno-builtin -Wall -ggdb -m32 -gstabs -nostdinc  -fno-stack-protector
 LDFLAGS := -m elf_i386 -nostdlib -N -e start
+CTYPES := c S
 
 ToObj = $(addprefix obj/,$(addsuffix .o,$(basename $(1))))
 ToBin = $(addprefix bin/,$(1))
 ToOut = $(addprefix obj/,$(addsuffix .out,$(basename $(1))))
 ToAsm = $(addprefix obj/,$(addsuffix .asm,$(basename $(1))))
-ListFiles = $(wildcard $(addsuffix /*,$(1)))
+
+listf = $(filter $(if $(2),$(addprefix %.,$(2)),%),\
+		  $(wildcard $(addsuffix /*,$(1))))
+ListFiles = $(call listf,$(1),$(CTYPES))
 
 compile = gcc -Iboot/ $(GCCFLAGS) -c $(1) -o $(2)\n
 
@@ -30,7 +34,7 @@ $(sign) : tools/sign.c
 	gcc -g -Wall -O2 $(call ToObj,$^) -o $@
 
 $(bootblock): $(bootfiles) | $(sign)
-	$(foreach f,$(bootfiles),gcc $(GCCFLAGS) -c $(f) -o $(call ToObj,$(f)) | ) :
+	$(foreach f,$(bootfiles),gcc -Iboot/ $(GCCFLAGS) -c $(f) -o $(call ToObj,$(f)) | ) :
 	ld $(LDFLAGS) -Ttext 0x7C00 $(call ToObj,$^) -o $(call ToObj,bootblock)
 	objdump -S $(call ToObj,bootblock) > $(call ToAsm,bootblock)
 	objcopy -S -O binary $(call ToObj,bootblock) $(call ToOut,bootblock)
