@@ -34,7 +34,7 @@ $(sign) : tools/sign.c
 	gcc -g -Wall -O2 $(call ToObj,$^) -o $@
 
 $(bootblock): $(bootfiles) | $(sign)
-	$(foreach f,$(bootfiles),gcc -Iboot/ $(GCCFLAGS) -c $(f) -o $(call ToObj,$(f)) | ) :
+	$(foreach f,$(bootfiles),gcc -Ilibs/ -Iboot/ $(GCCFLAGS) -c $(f) -o $(call ToObj,$(f)) | ) :
 	ld $(LDFLAGS) -Ttext 0x7C00 $(call ToObj,$^) -o $(call ToObj,bootblock)
 	objdump -S $(call ToObj,bootblock) > $(call ToAsm,bootblock)
 	objcopy -S -O binary $(call ToObj,bootblock) $(call ToOut,bootblock)
@@ -47,12 +47,16 @@ $(IMG): $(kernel) $(bootblock)
 
 .DEFAULT_GOAL = $(IMG)
 
-.PHONY: debug
+.PHONY: debug run
 debug: $(IMG)
 	qemu-system-i386 -S -s -parallel stdio -hda $< -serial null &
 	sleep 2
 	gnome-terminal -e "gdb -q -tui -x tools/gdbinit"
 
+run:
+	qemu-system-i386 $(IMG)
+
 .PHONY: clean
 clean:
 	rm -r bin obj
+
