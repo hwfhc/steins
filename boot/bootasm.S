@@ -38,6 +38,30 @@ seta20.2:
     movb $0xdf,%al
     outb %al,$0x60
 
+prob_init:
+    movl $0,%ebx
+    // size of memory
+    movl $0,0x8000
+    // address of memory dscriptor block
+    movw $0x8004,%di
+
+prob:
+    movl $0xE820,%eax
+    movl $0x534D4150,%edx
+    movl $20,%ecx
+
+    int $0x15
+    jnc prob_continue
+    movw $1234,0x8000
+    jmp prob_finish
+
+prob_continue:
+    addw $20,%di
+    incl 0x8000
+    cmpl $0,%ebx
+    jnz prob
+
+prob_finish:
     # switch from real mode to protected mode,
     # through set %cr0 to 1
     lgdt gdtdesc

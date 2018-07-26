@@ -1,11 +1,12 @@
 kernel := bin/kernel
 IMG := bin/steins.img
 
-GCCFLAGS := -fno-builtin -Wall -ggdb -m32 -gstabs -nostdinc  -fno-stack-protector
+GCCFLAGS := -g -fno-builtin -Wall -ggdb -m32 -gstabs -nostdinc  -fno-stack-protector
 LDFLAGS := -m elf_i386 -nostdlib
 CTYPES := c S
 
 ToObj = $(addprefix obj/,$(addsuffix .o,$(basename $(1))))
+ToObjD = $(addprefix obj/,$(addsuffix .d,$(basename $(1))))
 ToBin = $(addprefix bin/,$(1))
 ToOut = $(addprefix obj/,$(addsuffix .out,$(basename $(1))))
 ToAsm = $(addprefix obj/,$(addsuffix .asm,$(basename $(1))))
@@ -21,7 +22,7 @@ $(kernel): kern/init/init.c
 	mkdir -p obj/boot
 	mkdir -p obj/kern/init
 	gcc -Ikern/init/ -Ilibs/ $(GCCFLAGS) -c kern/init/init.c -o obj/kern/init/init.o
-	ld $(LDFLAGS) -o bin/kernel obj/kern/init/init.o
+	ld $(LDFLAGS) -T tools/kernel.ld -o bin/kernel obj/kern/init/init.o
 
 bootfiles = $(call ListFiles,boot)
 bootblock = $(call ToBin,bootblock)
@@ -34,8 +35,9 @@ $(sign) : tools/sign.c
 	gcc -g -Wall -O2 $(call ToObj,$^) -o $@
 
 $(bootblock): $(bootfiles) | $(sign)
+	# $(foreach f,$(bootfiles),gcc $(GCCFLAGS) -Iboot/ -Ilibs/ -Os -MM $(f) -MT "$(call ToObj,$(f)) $(call ToObjD,$(f))"> $(call ToObjD,$(f)) | ) :
 	$(foreach f,$(bootfiles),gcc $(GCCFLAGS) -Iboot/ -Ilibs/ -Os -c $(f) -o $(call ToObj,$(f)) | ) :
-	ld $(LDFLAGS) -N -e start -Ttext 0x7C00 $(call ToObj,$^) -o $(call ToObj,bootblock)
+	ld $(LDFLAGS) -N -T tools/boot.ld $(call ToObj,$^) -o $(call ToObj,bootblock)
 	objdump -S $(call ToObj,bootblock) > $(call ToAsm,bootblock)
 	objcopy -S -O binary $(call ToObj,bootblock) $(call ToOut,bootblock)
 	$(sign) $(call ToOut,bootblock) $@
